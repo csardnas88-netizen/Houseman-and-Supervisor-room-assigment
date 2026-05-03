@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Housekeeping Opera + Photo Assignment</title>
+
+  <!-- OCR for photos -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <!-- Excel / CSV support -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- PDF support -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs" type="module"></script>
+
+  <style>
+    :root {
+      --bg: #0e2233;
+      --card: #1b354c;
+      --gold: #d4b16f;
+      --gold2: #f0d28c;
+      --text: #f7f4ed;
+      --muted: #a7b5c3;
+      --line: rgba(212,177,111,.28);
+      --green: #55bd91;
+      --yellow: #f2c35f;
+      --red: #e35d5b;
+      --shadow: rgba(0,0,0,.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top center, rgba(37,72,101,.9), transparent 420px),
+        linear-gradient(180deg, #0b1c2b 0%, var(--bg) 100%);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    .container { max-width: 800px; margin: auto; }
+
+    h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 33px;
+      margin: 18px 0 4px;
+      text-align: center;
+      color: var(--text);
+      letter-spacing: -.5px;
+    }
+
+    h1::before {
+      content: "HOUSEKEEPING OPERATIONS";
+      display: block;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      color: var(--gold);
+      font-size: 13px;
+      letter-spacing: 7px;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    h1::after {
+      content: "";
+      display: block;
+      height: 1px;
+      background: var(--line);
+      margin: 26px -16px 0;
+    }
+
+    h2 {
+      color: var(--gold);
+      font-size: 15px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    h2::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+
+    h3 { color: var(--gold2); margin: 18px 0 8px; font-size: 18px; }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 18px;
+      margin-bottom: 34px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(32,61,86,.96), rgba(25,50,72,.96));
+      border-radius: 26px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 12px 26px var(--shadow);
+      border: 1px solid rgba(255,255,255,.12);
+      outline: 1px solid rgba(212,177,111,.12);
+    }
+
+    label {
+      display: block;
+      font-weight: 750;
+      margin: 14px 0 7px;
+      font-size: 14px;
+      color: var(--gold2);
+      letter-spacing: .7px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid rgba(212,177,111,.28);
+      border-radius: 15px;
+      font-size: 16px;
+      background: #10283b;
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(212,177,111,.15);
+    }
+
+    input::placeholder, textarea::placeholder { color: rgba(167,181,195,.65); }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    button {
+      width: 100%;
+      border: 1px solid rgba(212,177,111,.35);
+      border-radius: 16px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 800;
+      margin-top: 11px;
+      cursor: pointer;
+      background: linear-gradient(180deg, #d4b16f, #b98f45);
+      color: #102033;
+      letter-spacing: .5px;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--gold2);
+      border: 2px solid rgba(212,177,111,.45);
+    }
+
+    button.green {
+      background: rgba(85,189,145,.14);
+      color: #8ee5bf;
+      border: 2px solid rgba(85,189,145,.55);
+    }
+
+    button.red {
+      background: rgba(227,93,91,.16);
+      color: #ffaaa8;
+      border: 2px solid rgba(227,93,91,.55);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .pill {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: #0d2233;
+      font-size: 13px;
+      font-weight: 850;
+      margin: 4px 5px 4px 0;
+    }
+
+    .balanced { background: var(--green); }
+    .review { background: var(--yellow); color: #102033; }
+    .over { background: var(--red); color: #fff; }
+
+    .result-block {
+      border-left: 5px solid var(--green);
+      padding: 13px 14px;
+      margin: 11px 0;
+      background: rgba(16,40,59,.72);
+      border-radius: 16px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      border-right: 1px solid rgba(255,255,255,.08);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .review-border { border-left-color: var(--yellow); }
+    .over-border { border-left-color: var(--red); }
+
+    .small { font-size: 14px; color: var(--muted); line-height: 1.45; }
+
+    .summary {
+      white-space: pre-wrap;
+      background: #091723;
+      color: var(--text);
+      padding: 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: auto;
+      border: 1px solid rgba(212,177,111,.22);
+    }
+
+    .floor-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .floor-box {
+      background: #10283b;
+      border: 1px solid rgba(212,177,111,.24);
+      border-radius: 14px;
+      text-align: center;
+      padding: 10px 5px;
+      font-weight: 800;
+    }
+
+    .floor-box span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    .issue {
+      background: rgba(242,195,95,.12);
+      border: 1px solid rgba(242,195,95,.35);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 8px 0;
+      color: var(--text);
+    }
+
+    .issue.redIssue {
+      background: rgba(227,93,91,.13);
+      border-color: rgba(227,93,91,.45);
+    }
+
+    .hidden { display: none; }
+
+    .progress {
+      height: 11px;
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--green), var(--gold));
+      transition: width .3s ease;
+    }
+
+    summary { color: var(--gold2); margin-top: 8px; cursor: pointer; }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 20px 0;
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 14px; }
+      .row { grid-template-columns: 1fr; }
+      h1 { font-size: 30px; }
+      .subtitle { font-size: 17px; }
+      .card { border-radius: 24px; padding: 20px; }
+      h2 { font-size: 14px; letter-spacing: 4px; }
+      .floor-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Room Assignment Pro</h1>
+    <div class="subtitle">Opera File + Photo OCR · Floors 2 – 22</div>
+
+    <div class="card">
+      <h2>Best Option</h2>
+      <p class="small">
+        Upload the file downloaded from Opera whenever possible. This is more accurate than photo OCR.
+        Accepted: Excel, CSV, TXT, PDF. The photo option is still available as backup.
+      </p>
+
+      <label>Upload Opera File</label>
+      <input type="file" id="operaFileInput" accept=".xlsx,.xls,.csv,.txt,.pdf" />
+      <button class="green" onclick="readOperaFile()">Read Rooms from Opera File</button>
+
+      <div id="fileBox" class="hidden">
+        <p class="small" id="fileStatus">Reading file...</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Backup Option</h2>
+      <p class="small">Use this only if you do not have the Opera file. Best accuracy: one clear photo per page, straight angle, no plastic glare.</p>
+
+      <label>Upload or Take Photo</label>
+      <input type="file" id="imageInput" accept="image/*" capture="environment" />
+      <button class="secondary" onclick="runOCR()">Read Rooms from Photo</button>
+
+      <div id="ocrBox" class="hidden">
+        <p class="small" id="ocrStatus">Reading image...</p>
+        <div class="progress"><div class="bar" id="progressBar"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Detected Rooms</h2>
+      <label>Detected / Manual Room Numbers</label>
+      <textarea id="roomText" placeholder="Rooms will appear here. You can also paste or type them manually:
+0502
+0503
+0506
+0512
+0602
+0604"></textarea>
+
+      <div class="row">
+        <button class="secondary" onclick="cleanRoomList()">Clean + Validate</button>
+        <button class="red" onclick="clearRooms()">Clear Rooms</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Validation</h2>
+      <div id="validationBox" class="small">No validation yet.</div>
+      <div id="floorCounts"></div>
+    </div>
+
+    <div class="card">
+      <h2>Team</h2>
+      <div class="row">
+        <div>
+          <label>Number of Housemen</label>
+          <input type="number" id="housemanCount" min="1" value="4" />
+        </div>
+        <div>
+          <label>Number of Supervisors</label>
+          <input type="number" id="supervisorCount" min="1" value="3" />
+        </div>
+      </div>
+
+      <label>Houseman Names</label>
+      <textarea id="housemanNames">Houseman 1
+Houseman 2
+Houseman 3
+Houseman 4</textarea>
+
+      <label>Supervisor Names</label>
+      <textarea id="supervisorNames">Supervisor 1
+Supervisor 2
+Supervisor 3</textarea>
+
+      <button onclick="calculateAssignments()">Calculate Assignment</button>
+    </div>
+
+    <div class="card">
+      <h2>Results</h2>
+      <div id="totals"></div>
+      <div id="housemanResults"></div>
+      <div id="supervisorResults"></div>
+    </div>
+
+    <div class="card">
+      <h2>WhatsApp Summary</h2>
+      <div id="summary" class="summary">Your summary will appear here.</div>
+      <button class="green" onclick="copySummary()">Copy WhatsApp Summary</button>
+    </div>
+
+    <div class="footer">Opera file upload is recommended for highest accuracy. Photo OCR should be used as backup.</div>
+  </div>
+
+<script>
+let pdfjsLibReady = null;
+
+async function getPdfJs() {
+  if (!pdfjsLibReady) {
+    pdfjsLibReady = import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs").then(mod => {
+      mod.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs";
+      return mod;
+    });
+  }
+  return pdfjsLibReady;
+}
+
+function extractRoomNumbers(text) {
+  const matches = text.match(/\b\d{3,4}\b/g) || [];
+  const rooms = [];
+
+  matches.forEach(num => {
+    let room = String(num).padStart(4, "0");
+    let floor = parseInt(room.slice(0, 2), 10);
+
+    if (floor >= 2 && floor <= 22) {
+      rooms.push(room);
+    }
+  });
+
+  return rooms;
+}
+
+function uniquePreserveOrder(arr) {
+  const seen = new Set();
+  const unique = [];
+  const duplicates = [];
+
+  arr.forEach(x => {
+    if (seen.has(x)) duplicates.push(x);
+    else {
+      seen.add(x);
+      unique.push(x);
+    }
+  });
+
+  return { unique, duplicates };
+}
+
+function validateRooms(roomsRaw) {
+  const { unique, duplicates } = uniquePreserveOrder(roomsRaw);
+  const issues = [];
+  const byFloor = {};
+  const suspicious = [];
+
+  for (let f = 2; f <= 22; f++) byFloor[String(f).padStart(2, "0")] = 0;
+
+  unique.forEach((room, idx) => {
+    const floor = room.slice(0, 2);
+    const number = parseInt(room.slice(2), 10);
+
+    if (byFloor[floor] !== undefined) byFloor[floor]++;
+
+    if (number === 0 || number > 30) suspicious.push(room);
+
+    if (idx > 0) {
+      const prev = parseInt(unique[idx - 1], 10);
+      const current = parseInt(room, 10);
+      if (current < prev) {
+        issues.push(`Room order goes backwards: ${unique[idx - 1]} → ${room}`);
+      }
+    }
+  });
+
+  if (duplicates.length) issues.push(`Duplicate rooms removed: ${[...new Set(duplicates)].join(", ")}`);
+  if (suspicious.length) issues.push(`Possible OCR/file issue or unusual room numbers: ${suspicious.join(", ")}`);
+
+  return { unique, duplicates, issues, suspicious, byFloor };
+}
+
+function renderValidation(validation) {
+  const box = document.getElementById("validationBox");
+  const floorCounts = document.getElementById("floorCounts");
+
+  let html = "";
+  html += `<span class="pill balanced">Unique Rooms: ${validation.unique.length}</span>`;
+  html += `<span class="pill review">Floors 2–22 Checked</span>`;
+
+  if (validation.issues.length === 0) {
+    html += `<div class="issue"><strong>✓ Looks good.</strong><br>No duplicates or suspicious room numbers found. Review first and last room before assigning.</div>`;
+  } else {
+    validation.issues.forEach(issue => {
+      const red = issue.includes("unusual") || issue.includes("backwards");
+      html += `<div class="issue ${red ? "redIssue" : ""}"><strong>⚠ Review:</strong><br>${issue}</div>`;
+    });
+  }
+
+  box.innerHTML = html;
+
+  let grid = `<h3>Count by Floor</h3><div class="floor-grid">`;
+  Object.keys(validation.byFloor).forEach(floor => {
+    grid += `<div class="floor-box">${parseInt(floor,10)}<span>${validation.byFloor[floor]} rooms</span></div>`;
+  });
+  grid += `</div>`;
+
+  floorCounts.innerHTML = grid;
+}
+
+function setRoomsFromText(text, sourceLabel) {
+  const rawRooms = extractRoomNumbers(text);
+  const validation = validateRooms(rawRooms);
+  document.getElementById("roomText").value = validation.unique.join("\n");
+  renderValidation(validation);
+  return validation;
+}
+
+function cleanRoomList() {
+  const text = document.getElementById("roomText").value;
+  const validation = setRoomsFromText(text, "manual");
+  return validation.unique;
+}
+
+function clearRooms() {
+  document.getElementById("roomText").value = "";
+  document.getElementById("validationBox").textContent = "No validation yet.";
+  document.getElementById("floorCounts").innerHTML = "";
+  document.getElementById("summary").textContent = "Your summary will appear here.";
+  document.getElementById("totals").innerHTML = "";
+  document.getElementById("housemanResults").innerHTML = "";
+  document.getElementById("supervisorResults").innerHTML = "";
+}
+
+async function readOperaFile() {
+  const input = document.getElementById("operaFileInput");
+  const statusBox = document.getElementById("fileBox");
+  const status = document.getElementById("fileStatus");
+
+  if (!input.files || !input.files[0]) {
+    alert("Please upload the Opera file first.");
+    return;
+  }
+
+  const file = input.files[0];
+  const name = file.name.toLowerCase();
+
+  statusBox.classList.remove("hidden");
+  status.textContent = "Reading Opera file...";
+
+  try {
+    let text = "";
+
+    if (name.endsWith(".csv") || name.endsWith(".txt")) {
+      text = await file.text();
+    } else if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      workbook.SheetNames.forEach(sheetName => {
+        const sheet = workbook.Sheets[sheetName];
+        text += XLSX.utils.sheet_to_csv(sheet) + "\n";
+      });
+    } else if (name.endsWith(".pdf")) {
+      const pdfjsLib = await getPdfJs();
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(" ") + "\n";
+      }
+    } else {
+      alert("Unsupported file type. Please use Excel, CSV, TXT, or PDF.");
+      return;
+    }
+
+    const validation = setRoomsFromText(text, "Opera file");
+    status.textContent = `Done. ${validation.unique.length} unique room(s) detected from Opera file. Review validation before calculating.`;
+  } catch (error) {
+    console.error(error);
+    status.textContent = "Could not read the file. Try CSV or Excel if PDF does not work.";
+    alert("Could not read the file. Try exporting from Opera as CSV or Excel if possible.");
+  }
+}
+
+async function runOCR() {
+  const fileInput = document.getElementById("imageInput");
+
+  if (!fileInput.files || !fileInput.files[0]) {
+    alert("Please upload or take a photo first.");
+    return;
+  }
+
+  const ocrBox = document.getElementById("ocrBox");
+  const status = document.getElementById("ocrStatus");
+  const progressBar = document.getElementById("progressBar");
+
+  ocrBox.classList.remove("hidden");
+  progressBar.style.width = "0%";
+  status.textContent = "Reading image...";
+
+  try {
+    const result = await Tesseract.recognize(fileInput.files[0], "eng", {
+      logger: m => {
+        if (m.status) status.textContent = m.status;
+        if (m.progress) progressBar.style.width = Math.round(m.progress * 100) + "%";
+      }
+    });
+
+    const validation = setRoomsFromText(result.data.text, "photo");
+    status.textContent = `Done. ${validation.unique.length} unique room(s) detected from photo. Review validation before calculating.`;
+    progressBar.style.width = "100%";
+  } catch (error) {
+    status.textContent = "OCR failed. Please paste or type the room numbers manually.";
+    alert("OCR failed. You can still paste/type the room list manually.");
+  }
+}
+
+function getNames(text, count, fallback) {
+  let names = text.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  while (names.length < count) names.push(`${fallback} ${names.length + 1}`);
+  return names.slice(0, count);
+}
+
+function splitRooms(rooms, peopleCount) {
+  const total = rooms.length;
+  const base = Math.floor(total / peopleCount);
+  const extra = total % peopleCount;
+  const groups = [];
+  let index = 0;
+
+  for (let i = 0; i < peopleCount; i++) {
+    const size = base + (i < extra ? 1 : 0);
+    const assigned = rooms.slice(index, index + size);
+    groups.push(assigned);
+    index += size;
+  }
+
+  return groups;
+}
+
+function statusClass(count, idealLow, idealHigh) {
+  if (count >= idealLow && count <= idealHigh) return ["balanced", "Balanced", ""];
+  if (Math.abs(count - idealLow) <= 1 || Math.abs(count - idealHigh) <= 1) return ["review", "Fair", "review-border"];
+  return ["over", "Review", "over-border"];
+}
+
+function buildResult(title, names, groups, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = `<h3>${title}</h3>`;
+
+  const total = groups.reduce((sum, g) => sum + g.length, 0);
+  const idealLow = Math.floor(total / groups.length);
+  const idealHigh = Math.ceil(total / groups.length);
+
+  groups.forEach((group, i) => {
+    const first = group[0] || "N/A";
+    const last = group[group.length - 1] || "N/A";
+    const [pillClass, label, borderClass] = statusClass(group.length, idealLow, idealHigh);
+
+    const div = document.createElement("div");
+    div.className = `result-block ${borderClass}`;
+    div.innerHTML = `
+      <strong>${names[i]}</strong>
+      <br><span class="pill ${pillClass}">${label}</span>
+      <br>${group.length} room(s): ${first} to ${last}
+      <details>
+        <summary>Show full room list</summary>
+        <p class="small">${group.join(", ") || "No rooms"}</p>
+      </details>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function buildSummary(rooms, validation, housemanNames, housemanGroups, supervisorNames, supervisorGroups) {
+  let text = "";
+
+  text += `Housekeeping Room Assignment\n`;
+  text += `Total Rooms: ${rooms.length}\n`;
+
+  if (validation.issues.length) {
+    text += `Validation: Review needed\n`;
+    validation.issues.forEach(issue => text += `- ${issue}\n`);
+  } else {
+    text += `Validation: Looks good\n`;
+  }
+
+  text += `\nRooms by Floor:\n`;
+  Object.keys(validation.byFloor).forEach(floor => {
+    if (validation.byFloor[floor] > 0) {
+      text += `Floor ${parseInt(floor,10)}: ${validation.byFloor[floor]}\n`;
+    }
+  });
+
+  text += `\nHousemen Assignment:\n`;
+  housemanGroups.forEach((group, i) => {
+    text += `${housemanNames[i]}: ${group.length} rooms — ${group[0] || "N/A"} to ${group[group.length - 1] || "N/A"}\n`;
+  });
+
+  text += `\nSupervisors Assignment:\n`;
+  supervisorGroups.forEach((group, i) => {
+    text += `${supervisorNames[i]}: ${group.length} rooms — ${group[0] || "N/A"} to ${group[group.length - 1] || "N/A"}\n`;
+  });
+
+  text += `\nFull Room List by Assignment:\n\n`;
+
+  text += `Housemen:\n`;
+  housemanGroups.forEach((group, i) => {
+    text += `${housemanNames[i]}: ${group.join(", ")}\n`;
+  });
+
+  text += `\nSupervisors:\n`;
+  supervisorGroups.forEach((group, i) => {
+    text += `${supervisorNames[i]}: ${group.join(", ")}\n`;
+  });
+
+  return text;
+}
+
+function calculateAssignments() {
+  const rooms = cleanRoomList();
+
+  const housemanCount = parseInt(document.getElementById("housemanCount").value, 10);
+  const supervisorCount = parseInt(document.getElementById("supervisorCount").value, 10);
+
+  if (!rooms.length) {
+    alert("No rooms found. Please upload an Opera file, upload a photo, or enter room numbers.");
+    return;
+  }
+
+  if (!housemanCount || housemanCount < 1 || !supervisorCount || supervisorCount < 1) {
+    alert("Please enter valid numbers for Housemen and Supervisors.");
+    return;
+  }
+
+  const validation = validateRooms(rooms);
+  renderValidation(validation);
+
+  const housemanNames = getNames(document.getElementById("housemanNames").value, housemanCount, "Houseman");
+  const supervisorNames = getNames(document.getElementById("supervisorNames").value, supervisorCount, "Supervisor");
+
+  const housemanGroups = splitRooms(rooms, housemanCount);
+  const supervisorGroups = splitRooms(rooms, supervisorCount);
+
+  document.getElementById("totals").innerHTML = `
+    <span class="pill balanced">Total Rooms: ${rooms.length}</span>
+    <span class="pill review">Housemen: ${housemanCount}</span>
+    <span class="pill review">Supervisors: ${supervisorCount}</span>
+  `;
+
+  buildResult("Housemen Assignment", housemanNames, housemanGroups, "housemanResults");
+  buildResult("Supervisors Assignment", supervisorNames, supervisorGroups, "supervisorResults");
+
+  const summary = buildSummary(rooms, validation, housemanNames, housemanGroups, supervisorNames, supervisorGroups);
+  document.getElementById("summary").textContent = summary;
+}
+
+async function copySummary() {
+  const text = document.getElementById("summary").textContent;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("WhatsApp summary copied.");
+  } catch (e) {
+    alert("Copy failed. Please select and copy the summary manually.");
+  }
+}
+</script>
+</body>
+</html>
